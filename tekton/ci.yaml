@@ -55,6 +55,8 @@ spec:
     description: The git repository name
   - name: gitRepository
     description: The git repository that hosts context and Dockerfile
+  - name: gitShortRevision
+    description: The git revision to be used.
   - name: gitRevision
     description: The git revision to be used.
   - name: baseRef
@@ -65,9 +67,9 @@ spec:
     - apiVersion: tekton.dev/v1beta1
       kind: PipelineRun
       metadata:
-        generateName: "tracing-chrometrace-run-"
-        namespace: "ci-tracing-chrometrace"
+        generateName: "$(tt.params.gitShortRevision)-"
         annotations:
+          github.integrations.tekton.dev/name: "{{ .Name }}"
           github.integrations.tekton.dev/owner: "$(tt.params.owner)"
           github.integrations.tekton.dev/repo: "$(tt.params.repo)"
           github.integrations.tekton.dev/url: "https://tekton.office.furiosa.in/#/namespaces/{{ .Namespace }}/taskruns/{{ .Name }}"
