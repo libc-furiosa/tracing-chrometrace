@@ -10,6 +10,7 @@ spec:
   interceptors:
     - cel:
         filter: >-
+          body.action in ['opened', 'synchronize'] &&
           body.repository.name in ['tracing-chrometrace'] &&
           body.pull_request.base.ref in ['main']
   bindings:
