@@ -10,6 +10,7 @@ spec:
   interceptors:
     - cel:
         filter: >-
+          body.action in ['opened', 'synchronize'] &&
           body.repository.name in ['tracing-chrometrace'] &&
           body.pull_request.base.ref in ['main']
   bindings:
@@ -54,6 +55,8 @@ spec:
     description: The git repository name
   - name: gitRepository
     description: The git repository that hosts context and Dockerfile
+  - name: gitShortRevision
+    description: The git revision to be used.
   - name: gitRevision
     description: The git revision to be used.
   - name: baseRef
@@ -64,8 +67,7 @@ spec:
     - apiVersion: tekton.dev/v1beta1
       kind: PipelineRun
       metadata:
-        generateName: "tracing-chrometrace-run-"
-        namespace: "ci-tracing-chrometrace"
+        generateName: "$(tt.params.gitShortRevision)-"
         annotations:
           # github.integrations.tekton.dev/owner: "$(tt.params.owner)"
           # github.integrations.tekton.dev/repo: "$(tt.params.repo)"
@@ -141,13 +143,9 @@ spec:
     - name: DESCRIPTION
       value: "Build has started"
     - name: CONTEXT
-      value: "bors-chrometrace"
+      value: "chrometrace"
     - name: STATE
       value: pending
-    when:
-      - input: $(params.baseRef)
-        operator: in
-        values: ['staging', 'trying']
   - name: clone
     taskRef:
       name: git-clone
@@ -185,16 +183,13 @@ spec:
     - name: DESCRIPTION
       value: "Build has succeeded"
     - name: CONTEXT
-      value: "bors-chrometrace"
+      value: "chrometrace"
     - name: STATE
       value: success
     when:
     - input: $(tasks.status)
       operator: notin
       values: ["Failed"]
-    - input: $(params.baseRef)
-      operator: in
-      values: ['staging', 'trying']
   - name: set-status-failed
     taskRef:
       name: github-set-status
@@ -212,16 +207,13 @@ spec:
     - name: DESCRIPTION
       value: "Build has failed"
     - name: CONTEXT
-      value: "bors-chrometrace"
+      value: "chrometrace"
     - name: STATE
       value: failure
     when:
     - input: $(tasks.status)
       operator: in
       values: ["Failed"]
-    - input: $(params.baseRef)
-      operator: in
-      values: ['staging', 'trying']
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
