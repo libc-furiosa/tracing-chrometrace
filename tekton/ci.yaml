@@ -144,13 +144,9 @@ spec:
     - name: DESCRIPTION
       value: "Build has started"
     - name: CONTEXT
-      value: "bors-chrometrace"
+      value: "chrometrace"
     - name: STATE
       value: pending
-    when:
-      - input: $(params.baseRef)
-        operator: in
-        values: ['staging', 'trying']
   - name: clone
     taskRef:
       name: git-clone
@@ -188,16 +184,13 @@ spec:
     - name: DESCRIPTION
       value: "Build has succeeded"
     - name: CONTEXT
-      value: "bors-chrometrace"
+      value: "chrometrace"
     - name: STATE
       value: success
     when:
     - input: $(tasks.status)
       operator: notin
       values: ["Failed"]
-    - input: $(params.baseRef)
-      operator: in
-      values: ['staging', 'trying']
   - name: set-status-failed
     taskRef:
       name: github-set-status
@@ -215,16 +208,13 @@ spec:
     - name: DESCRIPTION
       value: "Build has failed"
     - name: CONTEXT
-      value: "bors-chrometrace"
+      value: "chrometrace"
     - name: STATE
       value: failure
     when:
     - input: $(tasks.status)
       operator: in
       values: ["Failed"]
-    - input: $(params.baseRef)
-      operator: in
-      values: ['staging', 'trying']
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
