@@ -67,10 +67,10 @@ spec:
         generateName: "tracing-chrometrace-run-"
         namespace: "ci-tracing-chrometrace"
         annotations:
-          github.integrations.tekton.dev/owner: "$(tt.params.owner)"
-          github.integrations.tekton.dev/repo: "$(tt.params.repo)"
-          github.integrations.tekton.dev/url: "https://tekton.office.furiosa.in/#/namespaces/{{ .Namespace }}/taskruns/{{ .Name }}"
-          github.integrations.tekton.dev/commit: "$(tt.params.gitRevision)"
+          # github.integrations.tekton.dev/owner: "$(tt.params.owner)"
+          # github.integrations.tekton.dev/repo: "$(tt.params.repo)"
+          # github.integrations.tekton.dev/url: "https://tekton.office.furiosa.in/#/namespaces/{{ .Namespace }}/taskruns/{{ .Name }}"
+          # github.integrations.tekton.dev/commit: "$(tt.params.gitRevision)"
       spec:
         params:
           - name: owner
