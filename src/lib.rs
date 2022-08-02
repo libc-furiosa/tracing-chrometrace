@@ -17,6 +17,7 @@ use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 use std::{collections::HashMap, io, time::Instant};
 
 use crossbeam_queue::ArrayQueue;
@@ -84,11 +85,11 @@ pub enum EventType {
 #[builder(derive(Debug))]
 pub struct ChromeEvent {
     #[builder(setter(custom))]
-    #[serde(default = "Instant::now")]
+    #[serde(default = "SystemTime::now")]
     #[serde(skip)]
     #[allow(unused)]
     #[derivative(PartialEq = "ignore")]
-    start: Instant,
+    start: SystemTime,
     #[builder(default)]
     #[builder(setter(into))]
     pub name: Cow<'static, str>,
@@ -98,7 +99,7 @@ pub struct ChromeEvent {
     #[builder(default)]
     pub ph: EventType,
     #[builder(
-        default = "Instant::now().duration_since(self.start.unwrap()).as_nanos() as f64 / 1000.0"
+        default = "SystemTime::now().duration_since(self.start.unwrap()).unwrap().as_nanos() as f64 / 1000.0"
     )]
     pub ts: f64,
     #[builder(default)]
@@ -121,7 +122,7 @@ pub struct ChromeEvent {
 }
 
 impl ChromeEvent {
-    pub fn builder(start: Instant) -> ChromeEventBuilder {
+    pub fn builder(start: SystemTime) -> ChromeEventBuilder {
         ChromeEventBuilder {
             start: Some(start),
             ..ChromeEventBuilder::create_empty()
@@ -131,7 +132,7 @@ impl ChromeEvent {
 
 #[derive(Debug)]
 pub struct ChromeLayer<S, W = fn() -> std::io::Stdout> {
-    pub start: Instant,
+    pub start: SystemTime,
     make_writer: W,
     events: Arc<Mutex<ArrayQueue<String>>>,
     _inner: PhantomData<S>,
@@ -212,6 +213,7 @@ where
     W: Clone + for<'writer> MakeWriter<'writer> + 'static,
 {
     fn drop(&mut self) {
+        //println!("guard dropping 1");
         let mut writer = self.make_writer.make_writer();
 
         let mut write = |event: String, is_last: bool| {
@@ -227,6 +229,7 @@ where
 
         if let Ok(lock) = self.events.lock() {
             let events = &*lock;
+            //println!("guard dropping 2: {}", events.len());
             // Write until last one left
             while events.len() > 1 {
                 write(events.pop().unwrap(), false);
@@ -251,7 +254,7 @@ where
         let (make_writer, guard) = ChromeWriter::new(make_writer, events.clone());
         (
             ChromeLayer {
-                start: Instant::now(),
+                start: SystemTime::now(),
                 make_writer,
                 events,
                 _inner: PhantomData,
@@ -262,9 +265,11 @@ where
 
     fn write(&self, writer: &mut dyn io::Write, event: ChromeEvent) -> io::Result<()> {
         let current = serde_json::to_string(&event).unwrap();
+        //println!("write: {:?}: {}", event, current);
 
         // Proceed only when previous event exists
         if let Some(event) = self.events.lock().unwrap().force_push(current) {
+            //println!("  event: {}", event);
             let mut buf = String::with_capacity(
                 event.len() + 1 /* Comma */ + 1 /* Newline */ + 1, /* Null */
             );
@@ -338,6 +343,7 @@ where
     W: Clone + for<'writer> MakeWriter<'writer> + 'static,
 {
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        //println!("on_new_span()");
         let span = ctx.span(id).expect("Span not found, this is a bug");
 
         let mut visitor = ChromeEventVisitor {
@@ -350,6 +356,7 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+        //println!("on_event()");
         let mut visitor = ChromeEventVisitor {
             builder: ChromeEvent::builder(self.start),
             event: None,
@@ -368,6 +375,7 @@ where
     }
 
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        //println!("on_enter()");
         let span = ctx.span(id).expect("Span not found, this is a bug");
 
         let mut extensions = span.extensions_mut();
@@ -403,6 +411,7 @@ where
     fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
 
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        //println!("on_close()");
         let span = ctx.span(&id).expect("Span not found, this is a bug");
 
         let mut extensions = span.extensions_mut();
@@ -440,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_serde() {
-        let event = ChromeEvent::builder(Instant::now())
+        let event = ChromeEvent::builder(SystemTime::now())
             .arg(("a".to_string(), "a".to_string()))
             .ts(1.0)
             .build()
